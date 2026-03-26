@@ -1,0 +1,100 @@
+server:
+  port: 4004 # Gateway listens on port 4004
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service-route
+          uri: http://auth-service:4005
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=1
+
+        # Route for /api/patients/** to patient-service
+        - id: patient-service-route
+          uri: http://patient-service:4000
+          predicates:
+            - Path=/api/patients/**
+          filters:
+            - StripPrefix=1
+            - JwtValidation
+
+        # Route for /api/analytics/** to analytics-service
+        - id: analytics-service-route
+          uri: http://analytics-service:4002
+          predicates:
+            - Path=/api/analytics/**
+          filters:
+            - StripPrefix=1
+            - JwtValidation
+
+        # Route for /api-docs/patients to patient-service /v3/api-docs
+        - id: api-docs-patient-route
+          uri: http://patient-service:4000
+          predicates:
+            - Path=/api-docs/patients
+          filters:
+            - RewritePath=/api-docs/patients,/v3/api-docs
+
+        - id: api-docs-auth-route
+          uri: http://auth-service:4005
+          predicates:
+            - Path=/api-docs/auth
+          filters:
+            - RewritePath=/api-docs/auth,/v3/api-docs
+
+        - id: api-docs-analytics-route
+          uri: http://analytics-service:4002
+          predicates:
+            - Path=/api-docs/analytics
+          filters:
+            - RewritePath=/api-docs/analytics,/v3/api-docs
+
+        # Route for /api/ai/** to ai-service
+        - id: ai-service-route
+          uri: http://ai-service:4003
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
+            - JwtValidation
+
+        - id: api-docs-ai-route
+          uri: http://ai-service:4003
+          predicates:
+            - Path=/api-docs/ai
+          filters:
+            - RewritePath=/api-docs/ai,/v3/api-docs
+
+  zipkin:
+    base-url: http://localhost:9411
+
+auth:
+  service:
+    url: http://auth-service:4005
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.pm.apigateway: DEBUG

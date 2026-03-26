@@ -1,0 +1,31 @@
+### Assess Patient Risk using AI
+POST http://localhost:4004/api/ai/assess-risk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "patientId": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "dateOfBirth": "1980-01-15",
+  "age": 44,
+  "address": "123 Main St",
+  "medicalHistory": "Diabetes, Hypertension",
+  "currentMedications": "Metformin, Lisinopril",
+  "allergies": "Penicillin"
+}
+
+### Detect Anomalies
+POST http://localhost:4004/api/ai/detect-anomalies
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "patientId": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "John Doe",
+  "email": "invalid-email",
+  "dateOfBirth": "1980-01-15",
+  "age": 30
+}
+
+
