@@ -52,8 +52,23 @@
     chatExpandBtn: $("chatExpandBtn"),
   };
 
+  /** When the portal is opened by IP or hostname (not localhost), API calls must use that origin — not localhost. */
+  function inferGatewayBaseUrl() {
+    const stored = localStorage.getItem("pm.baseUrl");
+    const origin = window.location.origin;
+    const host = window.location.hostname;
+    const inputFallback = elements.baseUrl ? elements.baseUrl.value.trim() : "";
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      if (stored && !/localhost|127\.0\.0\.1/i.test(stored)) {
+        return stored;
+      }
+      return origin;
+    }
+    return stored || inputFallback || "http://localhost:4004";
+  }
+
   const state = {
-    baseUrl: localStorage.getItem("pm.baseUrl") || elements.baseUrl.value.trim(),
+    baseUrl: inferGatewayBaseUrl(),
     token: localStorage.getItem("pm.token") || "",
     patientProfiles: JSON.parse(localStorage.getItem("pm.patientProfiles") || "{}"),
     currentRoute: "dashboard",
