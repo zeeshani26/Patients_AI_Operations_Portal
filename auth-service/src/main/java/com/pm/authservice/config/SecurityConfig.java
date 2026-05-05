@@ -21,6 +21,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(authorize -> authorize
             // Be explicit about HTTP methods to avoid matcher mismatches.
             .requestMatchers(HttpMethod.POST, "/login").permitAll()
+            .requestMatchers(HttpMethod.POST, "/register").permitAll()
             .requestMatchers(HttpMethod.GET, "/validate").permitAll()
             .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/actuator/**")
             .permitAll()

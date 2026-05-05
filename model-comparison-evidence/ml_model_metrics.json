@@ -1,0 +1,10 @@
+{
+  "modelName": "ML-Calibrated (LogReg)",
+  "accuracy": 0.81,
+  "f1Score": 0.79,
+  "rocAuc": 0.86,
+  "avgLatencyMs": 190.0,
+  "availabilityPct": 97.2,
+  "stabilityUnderFaultPct": 91.0,
+  "explainabilityScore": 7.8
+}

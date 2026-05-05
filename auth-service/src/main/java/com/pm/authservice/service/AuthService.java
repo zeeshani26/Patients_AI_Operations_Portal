@@ -1,6 +1,8 @@
 package com.pm.authservice.service;
 
 import com.pm.authservice.dto.LoginRequestDTO;
+import com.pm.authservice.dto.RegisterRequestDTO;
+import com.pm.authservice.model.User;
 import com.pm.authservice.util.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import java.util.Optional;
@@ -37,5 +39,18 @@ public class AuthService {
     } catch (JwtException e){
       return false;
     }
+  }
+
+  public boolean register(RegisterRequestDTO request) {
+    if (userService.existsByEmail(request.getEmail())) {
+      return false;
+    }
+
+    User user = new User();
+    user.setEmail(request.getEmail());
+    user.setPassword(passwordEncoder.encode(request.getPassword()));
+    user.setRole("USER");
+    userService.save(user);
+    return true;
   }
 }

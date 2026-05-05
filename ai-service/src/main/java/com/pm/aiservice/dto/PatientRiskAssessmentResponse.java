@@ -2,6 +2,7 @@ package com.pm.aiservice.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public class PatientRiskAssessmentResponse {
 
@@ -12,7 +13,13 @@ public class PatientRiskAssessmentResponse {
   private List<String> riskFactors;
   private List<String> recommendations;
   private Double confidenceScore;
+  private String confidenceReason;
+  private Map<String, Double> factorContributions;
   private LocalDateTime assessedAt;
+
+  // Causal AI deliverables (derived from rule-based factor contributions)
+  private CausalGraphDTO causalGraph;
+  private List<InterventionResultDTO> interventionResults;
 
   // Getters and Setters
   public String getPatientId() {
@@ -77,6 +84,38 @@ public class PatientRiskAssessmentResponse {
 
   public void setAssessedAt(LocalDateTime assessedAt) {
     this.assessedAt = assessedAt;
+  }
+
+  public String getConfidenceReason() {
+    return confidenceReason;
+  }
+
+  public void setConfidenceReason(String confidenceReason) {
+    this.confidenceReason = confidenceReason;
+  }
+
+  public Map<String, Double> getFactorContributions() {
+    return factorContributions;
+  }
+
+  public void setFactorContributions(Map<String, Double> factorContributions) {
+    this.factorContributions = factorContributions;
+  }
+
+  public CausalGraphDTO getCausalGraph() {
+    return causalGraph;
+  }
+
+  public void setCausalGraph(CausalGraphDTO causalGraph) {
+    this.causalGraph = causalGraph;
+  }
+
+  public List<InterventionResultDTO> getInterventionResults() {
+    return interventionResults;
+  }
+
+  public void setInterventionResults(List<InterventionResultDTO> interventionResults) {
+    this.interventionResults = interventionResults;
   }
 }
 

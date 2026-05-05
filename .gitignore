@@ -71,9 +71,7 @@ Thumbs.db
 *.jks
 *.keystore
 
-# Docker
-/docker/
-/docker-compose.yml
+# Docker (optional local overrides only; base compose is tracked for deploys)
 /docker-compose.override.yml
 
 # Kubernetes

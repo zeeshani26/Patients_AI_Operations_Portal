@@ -16,6 +16,9 @@ import software.amazon.awscdk.services.ec2.ISubnet;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.ec2.SubnetConfiguration;
+import software.amazon.awscdk.services.ec2.SubnetSelection;
+import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ecs.AwsLogDriverProps;
 import software.amazon.awscdk.services.ecs.CloudMapNamespaceOptions;
@@ -30,6 +33,10 @@ import software.amazon.awscdk.services.ecs.Protocol;
 import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedFargateService;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
+import software.amazon.awscdk.services.cloudwatch.Alarm;
+import software.amazon.awscdk.services.cloudwatch.ComparisonOperator;
+import software.amazon.awscdk.services.cloudwatch.Dashboard;
+import software.amazon.awscdk.services.cloudwatch.GraphWidget;
 import software.amazon.awscdk.services.msk.CfnCluster;
 import software.amazon.awscdk.services.rds.Credentials;
 import software.amazon.awscdk.services.rds.DatabaseInstance;
@@ -37,15 +44,21 @@ import software.amazon.awscdk.services.rds.DatabaseInstanceEngine;
 import software.amazon.awscdk.services.rds.PostgresEngineVersion;
 import software.amazon.awscdk.services.rds.PostgresInstanceEngineProps;
 import software.amazon.awscdk.services.route53.CfnHealthCheck;
+import software.amazon.awscdk.services.applicationautoscaling.EnableScalingProps;
+import software.amazon.awscdk.services.ecs.CpuUtilizationScalingProps;
 
 public class LocalStack extends Stack {
   private final Vpc vpc;
   private final Cluster ecsCluster;
+  private final Dashboard dashboard;
 
   public LocalStack(final App scope, final String id, final StackProps props){
     super(scope, id, props);
 
     this.vpc = createVpc();
+    this.dashboard = Dashboard.Builder.create(this, "ServiceDashboard")
+        .dashboardName("patient-management-service-dashboard")
+        .build();
 
     DatabaseInstance authServiceDb =
         createDatabase("AuthServiceDB", "auth-service-db");
@@ -69,6 +82,9 @@ public class LocalStack extends Stack {
             List.of(4005),
             authServiceDb,
             Map.of("JWT_SECRET", "Y2hhVEc3aHJnb0hYTzMyZ2ZqVkpiZ1RkZG93YWxrUkM="));
+    addCpuAlarmAndWidget(authService, "auth-service");
+    addCpuAutoScaling(authService, "auth-service");
+    addMemoryAlarmAndWidget(authService, "auth-service");
 
     authService.getNode().addDependency(authDbHealthCheck);
     authService.getNode().addDependency(authServiceDb);
@@ -79,6 +95,9 @@ public class LocalStack extends Stack {
             List.of(4001,9001),
             null,
             null);
+    addCpuAlarmAndWidget(billingService, "billing-service");
+    addCpuAutoScaling(billingService, "billing-service");
+    addMemoryAlarmAndWidget(billingService, "billing-service");
 
     FargateService analyticsService =
         createFargateService("AnalyticsService",
@@ -86,6 +105,9 @@ public class LocalStack extends Stack {
             List.of(4002),
             null,
             null);
+    addCpuAlarmAndWidget(analyticsService, "analytics-service");
+    addCpuAutoScaling(analyticsService, "analytics-service");
+    addMemoryAlarmAndWidget(analyticsService, "analytics-service");
 
     analyticsService.getNode().addDependency(mskCluster);
 
@@ -97,6 +119,9 @@ public class LocalStack extends Stack {
             "BILLING_SERVICE_ADDRESS", "host.docker.internal",
             "BILLING_SERVICE_GRPC_PORT", "9001"
         ));
+    addCpuAlarmAndWidget(patientService, "patient-service");
+    addCpuAutoScaling(patientService, "patient-service");
+    addMemoryAlarmAndWidget(patientService, "patient-service");
     patientService.getNode().addDependency(patientServiceDb);
     patientService.getNode().addDependency(patientDbHealthCheck);
     patientService.getNode().addDependency(billingService);
@@ -110,6 +135,23 @@ public class LocalStack extends Stack {
         .create(this, "PatientManagementVPC")
         .vpcName("PatientManagementVPC")
         .maxAzs(2)
+        // LocalStack does not emulate NAT Gateway reliably, so we avoid NAT for deployability.
+        .natGateways(0)
+        // Use public subnets only.
+        .subnetConfiguration(List.of(
+            SubnetConfiguration.builder()
+                .name("Public")
+                .subnetType(SubnetType.PUBLIC)
+                .cidrMask(24)
+                .build()
+            ,
+            SubnetConfiguration.builder()
+                // RDS will explicitly select this subnet type.
+                .name("Isolated")
+                .subnetType(SubnetType.PRIVATE_ISOLATED)
+                .cidrMask(24)
+                .build()
+        ))
         .build();
   }
 
@@ -121,6 +163,9 @@ public class LocalStack extends Stack {
                 .version(PostgresEngineVersion.VER_17_2)
                 .build()))
         .vpc(vpc)
+        .vpcSubnets(SubnetSelection.builder()
+            .subnetType(SubnetType.PRIVATE_ISOLATED)
+            .build())
         .instanceType(InstanceType.of(InstanceClass.BURSTABLE2, InstanceSize.MICRO))
         .allocatedStorage(20)
         .credentials(Credentials.fromGeneratedSecret("admin_user"))
@@ -223,9 +268,73 @@ public class LocalStack extends Stack {
     return FargateService.Builder.create(this, id)
         .cluster(ecsCluster)
         .taskDefinition(taskDefinition)
-        .assignPublicIp(false)
+        // Keep tasks on public subnets so LocalStack doesn't need private NAT routing.
+        .assignPublicIp(true)
+        .vpcSubnets(SubnetSelection.builder()
+            .subnetType(SubnetType.PUBLIC)
+            .build())
         .serviceName(imageName)
         .build();
+  }
+
+  private void addCpuAlarmAndWidget(FargateService service, String serviceName) {
+    var cpuMetric = service.metricCpuUtilization();
+
+    Alarm.Builder.create(this, serviceName + "HighCpuAlarm")
+        .alarmName(serviceName + "-high-cpu")
+        .metric(cpuMetric)
+        .threshold(80)
+        .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
+        .evaluationPeriods(2)
+        .build();
+
+    GraphWidget widget = GraphWidget.Builder.create()
+        .title(serviceName + " CPU Utilization")
+        .left(List.of(cpuMetric))
+        .width(12)
+        .height(6)
+        .build();
+
+    dashboard.addWidgets(widget);
+  }
+
+  private void addMemoryAlarmAndWidget(FargateService service, String serviceName) {
+    var memoryMetric = service.metricMemoryUtilization();
+
+    Alarm.Builder.create(this, serviceName + "HighMemoryAlarm")
+        .alarmName(serviceName + "-high-memory")
+        .metric(memoryMetric)
+        .threshold(80)
+        .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
+        .evaluationPeriods(2)
+        .build();
+
+    GraphWidget widget = GraphWidget.Builder.create()
+        .title(serviceName + " Memory Utilization")
+        .left(List.of(memoryMetric))
+        .width(12)
+        .height(6)
+        .build();
+
+    dashboard.addWidgets(widget);
+  }
+
+  private void addCpuAutoScaling(FargateService service, String serviceName) {
+    // Task count auto-scaling driven by ECS CPU utilization.
+    // This is used for the "auto-scaling and scalability" section of the thesis.
+    var scalableTaskCount = service.autoScaleTaskCount(
+        EnableScalingProps.builder()
+            .minCapacity(1)
+            .maxCapacity(3)
+            .build());
+
+    scalableTaskCount.scaleOnCpuUtilization(
+        serviceName + "-cpu-scaling",
+        CpuUtilizationScalingProps.builder()
+            .targetUtilizationPercent(50)
+            .scaleInCooldown(Duration.seconds(60))
+            .scaleOutCooldown(Duration.seconds(60))
+            .build());
   }
 
   private void createApiGatewayService() {

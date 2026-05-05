@@ -1,7 +1,10 @@
 package com.pm.aiservice.service;
 
+import com.pm.aiservice.dto.ChatMessageRequestDTO;
+import com.pm.aiservice.dto.ChatMessageResponseDTO;
 import com.pm.aiservice.dto.PatientRiskAssessmentRequest;
 import com.pm.aiservice.dto.PatientRiskAssessmentResponse;
+import com.pm.aiservice.repository.ExperimentRunRepository;
 import com.pm.aiservice.repository.PatientPredictionRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,9 +15,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,6 +28,15 @@ class AiPredictionServiceTest {
 
   @Mock
   private PatientPredictionRepository repository;
+
+  @Mock
+  private ExperimentRunRepository experimentRunRepository;
+
+  @Mock
+  private LongitudinalDatasetService datasetService;
+
+  @Mock
+  private GeminiChatService geminiChatService;
 
   @InjectMocks
   private AiPredictionService service;
@@ -33,6 +48,10 @@ class AiPredictionServiceTest {
     // Create service with rule-based model (no OpenAI)
     service = new AiPredictionService(
         repository,
+        experimentRunRepository,
+        datasetService,
+        geminiChatService,
+        "../model-comparison-evidence/ml_model_metrics.json",
         "",
         false,
         new SimpleMeterRegistry()
@@ -102,6 +121,36 @@ class AiPredictionServiceTest {
     // Then
     assertNotNull(response);
     assertTrue(response.getRiskScore() > 0.0);
+  }
+
+  @Test
+  void chatWithAssistant_conditionDefinitionWithMetabolicRisk_usesGeminiNotRuleSummary() {
+    when(geminiChatService.isConfigured()).thenReturn(true);
+    when(geminiChatService.generateReply(anyString(), anyString()))
+        .thenReturn(Optional.of("Metabolic risk in diabetes refers to long-run blood sugar and circulation stress."));
+
+    ChatMessageRequestDTO req = new ChatMessageRequestDTO();
+    req.setMessage("what does this condition mean: diabetes with long-term metabolic risk");
+    req.setPatientContext(request);
+
+    ChatMessageResponseDTO res = service.chatWithAssistant(req);
+
+    assertFalse(res.getAnswer().contains("For patient"));
+    assertTrue(res.getAnswer().toLowerCase().contains("diabetes"));
+    verify(geminiChatService).generateReply(anyString(), contains("diabetes"));
+  }
+
+  @Test
+  void chatWithAssistant_oneWordRisk_returnsStructuredPortalRisk() {
+    when(geminiChatService.isConfigured()).thenReturn(false);
+
+    ChatMessageRequestDTO req = new ChatMessageRequestDTO();
+    req.setMessage("risk");
+    req.setPatientContext(request);
+
+    ChatMessageResponseDTO res = service.chatWithAssistant(req);
+    assertTrue(res.getAnswer().contains("For patient"));
+    assertTrue(res.getAnswer().contains("John Doe"));
   }
 }
 

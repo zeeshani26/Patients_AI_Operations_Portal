@@ -1,462 +1,132 @@
-###### Copyright © 2025 Code Jackal | Original Course Material by Chris Blakely
+# Patient AI Operations Portal
 
----
-# 🎓 Master's Level Enhancements
+Microservices platform for explainable patient risk, intervention what-if, causal guardrails under stress, and a browser UI served by the API gateway.
 
-This project has been elevated to **Master's Graduate Level** with comprehensive improvements:
-
-## ✨ Key Enhancements
-
-### 1. **Monitoring & Observability**
-- ✅ Prometheus metrics integration
-- ✅ Distributed tracing with Zipkin
-- ✅ Custom health indicators
-- ✅ Business-specific metrics
-
-### 2. **Resilience Patterns**
-- ✅ Circuit Breaker (Resilience4j)
-- ✅ Retry logic with exponential backoff
-- ✅ Timeout handling
-- ✅ Fallback mechanisms
-
-### 3. **Production-Ready Business Logic**
-- ✅ Full database persistence (Billing & Analytics services)
-- ✅ Real analytics with statistics aggregation
-- ✅ Proper error handling and status codes
-
-### 4. **Security Enhancements**
-- ✅ Rate limiting (10 req/min on login)
-- ✅ Enhanced password encryption (BCrypt strength 12)
-- ✅ Method-level security
-- ✅ Comprehensive input validation
-
-### 5. **Comprehensive Testing**
-- ✅ Unit tests for all services
-- ✅ Integration tests
-- ✅ Error scenario testing
-- ✅ >80% coverage on critical paths
-
-### 6. **Performance Optimizations**
-- ✅ Caffeine caching (500 entries, 10min TTL)
-- ✅ Database indexing
-- ✅ Connection pooling
-- ✅ Async processing
-
-### 7. **Documentation**
-- ✅ API documentation (Swagger/OpenAPI)
-- ✅ Architecture documentation
-- ✅ Deployment guides
-
-### 8. **AI Integration** 🤖
-- ✅ New AI Service microservice
-- ✅ Patient risk assessment (Rule-based + OpenAI GPT-3.5)
-- ✅ Anomaly detection in patient data
-- ✅ Automatic risk assessment on patient creation
-- ✅ Prediction history and tracking
-
-
----
-# Join the Discord Community
-
-This source code is for the Java/Spring microservices course available on my 
-YouTube channel. You can join the discord for help and discussion here:
-
-https://discord.gg/nCrDnfCE
-
-
-# Patient Service
+**Stack:** Java 21, Spring Boot, PostgreSQL, Kafka, ZooKeeper, gRPC, optional Gemini chat. **Run everything with Docker Compose.**
 
 ---
 
-## Environment Variables
+## Prerequisites
 
-```
-JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005;
-SPRING_DATASOURCE_PASSWORD=password;
-SPRING_DATASOURCE_URL=jdbc:postgresql://patient-service-db:5432/db;
-SPRING_DATASOURCE_USERNAME=admin_user;
-SPRING_JPA_HIBERNATE_DDL_AUTO=update;
-SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092;
-SPRING_SQL_INIT_MODE=always
-```
-
-# Billing Service
+- **Docker Desktop** (Windows/macOS) or **Docker Engine + Compose** (Linux). Daemon must be running.
+- **Git**
+- Optional: **Gemini API key** for the AI Copilot (`GEMINI_API_KEY`). Chat still works with rule-based fallbacks if unset.
 
 ---
 
-## gRPC Setup
+## Run locally (step by step)
 
-Add the following to the `<dependencies>` section
-```
-<!--GRPC -->
-<dependency>
-    <groupId>io.grpc</groupId>
-    <artifactId>grpc-netty-shaded</artifactId>
-    <version>1.69.0</version>
-</dependency>
-<dependency>
-    <groupId>io.grpc</groupId>
-    <artifactId>grpc-protobuf</artifactId>
-    <version>1.69.0</version>
-</dependency>
-<dependency>
-    <groupId>io.grpc</groupId>
-    <artifactId>grpc-stub</artifactId>
-    <version>1.69.0</version>
-</dependency>
-<dependency> <!-- necessary for Java 9+ -->
-    <groupId>org.apache.tomcat</groupId>
-    <artifactId>annotations-api</artifactId>
-    <version>6.0.53</version>
-    <scope>provided</scope>
-</dependency>
-<dependency>
-    <groupId>net.devh</groupId>
-    <artifactId>grpc-spring-boot-starter</artifactId>
-    <version>3.1.0.RELEASE</version>
-</dependency>
-<dependency>
-    <groupId>com.google.protobuf</groupId>
-    <artifactId>protobuf-java</artifactId>
-    <version>4.29.1</version>
-</dependency>
+### 1) Clone and enter the repo
 
+```powershell
+git clone <your-repo-url>
+cd java-spring-microservices
 ```
 
-Replace the `<build>` section with the following
+### 2) Environment file
 
+```powershell
+copy .env.example .env
 ```
 
-<build>
-    <extensions>
-        <!-- Ensure OS compatibility for protoc -->
-        <extension>
-            <groupId>kr.motd.maven</groupId>
-            <artifactId>os-maven-plugin</artifactId>
-            <version>1.7.0</version>
-        </extension>
-    </extensions>
-    <plugins>
-        <!-- Spring boot / maven  -->
-        <plugin>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-maven-plugin</artifactId>
-        </plugin>
+Edit `.env` and set **`GEMINI_API_KEY`** (and optionally **`GOOGLE_API_KEY`**) if you want cloud LLM replies. Save the file.  
+**Never commit `.env`** (it is gitignored).
 
-        <!-- PROTO -->
-        <plugin>
-            <groupId>org.xolstice.maven.plugins</groupId>
-            <artifactId>protobuf-maven-plugin</artifactId>
-            <version>0.6.1</version>
-            <configuration>
-                <protocArtifact>com.google.protobuf:protoc:3.25.5:exe:${os.detected.classifier}</protocArtifact>
-                <pluginId>grpc-java</pluginId>
-                <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.68.1:exe:${os.detected.classifier}</pluginArtifact>
-            </configuration>
-            <executions>
-                <execution>
-                    <goals>
-                        <goal>compile</goal>
-                        <goal>compile-custom</goal>
-                    </goals>
-                </execution>
-            </executions>
-        </plugin>
-    </plugins>
-</build>
+### 3) Start the stack
 
+From the **repository root** (where `docker-compose.yml` lives):
+
+```powershell
+docker compose up -d --build
 ```
 
-# Patient Service
+First startup can take several minutes (images + Maven builds).
+
+### 4) Confirm containers
+
+```powershell
+docker compose ps
+```
+
+Wait until core services are **running** / **healthy** (Kafka may take a short while).
+
+### 5) Open the app
+
+**URL:** [http://localhost:4004](http://localhost:4004)
+
+Default gateway base URL in the UI is `http://localhost:4004`; leave it as-is for local use.
+
+**Zipkin (tracing):** [http://localhost:9411](http://localhost:9411)
+
+### 6) Sign in
+
+Use credentials from your auth seed data (for example **`testuser@test.com`** / **`password`** if that user exists in `auth-service` seed SQL), or **Create Account** on the portal.
 
 ---
 
-## Environment Variables (complete list)
-```bash
-BILLING_SERVICE_ADDRESS=billing-service;
-BILLING_SERVICE_GRPC_PORT=9005;
-JAVA_TOOL_OPTIONS=-agentlib:jdwp\=transport\=dt_socket,server\=y,suspend\=n,address\=*:5005;
-SPRING_DATASOURCE_PASSWORD=password;
-SPRING_DATASOURCE_URL=jdbc:postgresql://patient-service-db:5432/db;
-SPRING_DATASOURCE_USERNAME=admin_user;
-SPRING_JPA_HIBERNATE_DDL_AUTO=update;
-SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092;
-SPRING_SQL_INIT_MODE=always
+## Stop / reset
+
+**Stop without deleting data:**
+
+```powershell
+docker compose down
 ```
 
+**Full reset** (PostgreSQL volume cleared; fixes many Kafka/ZooKeeper stale states):
 
-## gRPC Setup
-
-Add the following to the `<dependencies>` section
+```powershell
+docker compose down -v
+docker compose up -d --build
 ```
-<!--GRPC -->
-<dependency>
-    <groupId>io.grpc</groupId>
-    <artifactId>grpc-netty-shaded</artifactId>
-    <version>1.69.0</version>
-</dependency>
-<dependency>
-    <groupId>io.grpc</groupId>
-    <artifactId>grpc-protobuf</artifactId>
-    <version>1.69.0</version>
-</dependency>
-<dependency>
-    <groupId>io.grpc</groupId>
-    <artifactId>grpc-stub</artifactId>
-    <version>1.69.0</version>
-</dependency>
-<dependency> <!-- necessary for Java 9+ -->
-    <groupId>org.apache.tomcat</groupId>
-    <artifactId>annotations-api</artifactId>
-    <version>6.0.53</version>
-    <scope>provided</scope>
-</dependency>
-<dependency>
-    <groupId>net.devh</groupId>
-    <artifactId>grpc-spring-boot-starter</artifactId>
-    <version>3.1.0.RELEASE</version>
-</dependency>
-<dependency>
-    <groupId>com.google.protobuf</groupId>
-    <artifactId>protobuf-java</artifactId>
-    <version>4.29.1</version>
-</dependency>
-
-```
-
-Replace the `<build>` section with the following
-
-```
-
-<build>
-    <extensions>
-        <!-- Ensure OS compatibility for protoc -->
-        <extension>
-            <groupId>kr.motd.maven</groupId>
-            <artifactId>os-maven-plugin</artifactId>
-            <version>1.7.0</version>
-        </extension>
-    </extensions>
-    <plugins>
-        <!-- Spring boot / maven  -->
-        <plugin>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-maven-plugin</artifactId>
-        </plugin>
-
-        <!-- PROTO -->
-        <plugin>
-            <groupId>org.xolstice.maven.plugins</groupId>
-            <artifactId>protobuf-maven-plugin</artifactId>
-            <version>0.6.1</version>
-            <configuration>
-                <protocArtifact>com.google.protobuf:protoc:3.25.5:exe:${os.detected.classifier}</protocArtifact>
-                <pluginId>grpc-java</pluginId>
-                <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.68.1:exe:${os.detected.classifier}</pluginArtifact>
-            </configuration>
-            <executions>
-                <execution>
-                    <goals>
-                        <goal>compile</goal>
-                        <goal>compile-custom</goal>
-                    </goals>
-                </execution>
-            </executions>
-        </plugin>
-    </plugins>
-</build>
-
-```
-
-## Kafka Container
-
-Copy/paste this line into the environment variables when running the container in intellij
-```
-KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094;KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER;KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093;KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT;KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094;KAFKA_CFG_NODE_ID=0;KAFKA_CFG_PROCESS_ROLES=controller,broker
-```
-
-## Kafka Producer Setup (Patient Service)
-
-Add the following to `application.properties`
-```
-spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
-spring.kafka.consumer.value-deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
-```
-
-
-# Notification Service
 
 ---
 
-## Environment Vars
+## Repo layout (short)
 
-```
-SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-```
+| Path | Role |
+|------|------|
+| `docker-compose.yml` | Full stack orchestration |
+| `docker/init-databases.sql` | Postgres databases on first boot |
+| `api-gateway/` | Gateway + static SPA (`src/main/resources/static/`) |
+| `auth-service/`, `patient-service/`, `billing-service/`, `analytics-service/`, `ai-service/` | Microservices |
+| `healthcare_dataset*.csv` | Optional bulk import in Patient Records |
+| `scripts/` | Optional offline helpers (e.g. dataset augmentation, ML baseline) |
+| `load-test/` | Optional PowerShell load scripts |
+| `infrastructure/` | AWS CDK (optional; not required for local Compose) |
 
-## Protobuf/Kafka 
+---
 
-Dependencies (add in addition to whats there)
+## Hosting on a VPS (HTTPS, public URL)
 
-```
-<dependency>
-    <groupId>org.springframework.kafka</groupId>
-    <artifactId>spring-kafka</artifactId>
-    <version>3.3.0</version>
-</dependency>
+1. Push this repo to GitHub (including `docker-compose.yml` and `docker/`).  
+2. On a Linux VPS: install Docker, clone the repo, copy `.env.example` → `.env`, run `docker compose up -d --build`.  
+3. Put a reverse proxy (e.g. **Caddy** or **nginx**) in front with TLS; proxy to **`127.0.0.1:4004`**.  
+4. In the portal **Settings**, set **Gateway Base URL** to your public **`https://your-domain`** (not `localhost`).  
+5. Firewall: allow **22**, **80**, **443** only; do not expose Postgres/Kafka ports publicly.
 
-<dependency>
-    <groupId>com.google.protobuf</groupId>
-    <artifactId>protobuf-java</artifactId>
-    <version>4.29.1</version>
-</dependency>
-```
+---
 
-Update the build section in pom.xml with the following
+## Demo workflow (quick)
 
-```
-    <build>
-        <extensions>
-            <!-- Ensure OS compatibility for protoc -->
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.0</version>
-            </extension>
-        </extensions>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+1. **Patient Records** — import or create patients; click a row to set **active patient** for chat/AI.  
+2. **Digital Twin** — assess risk, anomalies, intervention.  
+3. **Chaos Center** — stress presets and guardrail decision.  
+4. **Experiments / Findings** — scenario suite and exports as needed.  
+5. **AI Copilot** (floating control) — ask risk, definitions, or portal questions.
 
-            <plugin>
-                <groupId>org.xolstice.maven.plugins</groupId>
-                <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
-                <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:3.25.5:exe:${os.detected.classifier}</protocArtifact>
-                    <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.68.1:exe:${os.detected.classifier}</pluginArtifact>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>compile-custom</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
-```
+---
 
+## Troubleshooting
 
-# Auth service
+| Issue | What to try |
+|--------|--------------|
+| Gateway connection refused | `docker compose ps`; ensure **api-gateway** is up; wait after rebuild. |
+| Kafka / ZooKeeper errors after restart | `docker compose down -v` then `up -d --build`. |
+| Chat always fallback / errors | Set **`GEMINI_API_KEY`** in `.env`; restart **ai-service**: `docker compose up -d ai-service`. |
+| Port already in use | Stop other apps using **4004**, **5432**, **9092**, etc., or change ports in `docker-compose.yml`. |
 
-Dependencies (add in addition to whats there)
+---
 
-```
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+## License / academic use
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>0.12.6</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>0.12.6</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>0.12.6</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.6.0</version>
-        </dependency>
-        <dependency>
-          <groupId>com.h2database</groupId>
-          <artifactId>h2</artifactId>
-        </dependency>
-       
-```
-
-## Environment Variables
-
-```
-SPRING_DATASOURCE_PASSWORD=password
-SPRING_DATASOURCE_URL=jdbc:postgresql://auth-service-db:5432/db
-SPRING_DATASOURCE_USERNAME=admin_user
-SPRING_JPA_HIBERNATE_DDL_AUTO=update
-SPRING_SQL_INIT_MODE=always
-```
-
-
-## Data.sql
-
-```sql
--- Ensure the 'users' table exists
-CREATE TABLE IF NOT EXISTS "users" (
-    id UUID PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL
-);
-
--- Insert the user if no existing user with the same id or email exists
-INSERT INTO "users" (id, email, password, role)
-SELECT '223e4567-e89b-12d3-a456-426614174006', 'testuser@test.com',
-       '$2b$12$7hoRZfJrRKD2nIm2vHLs7OBETy.LWenXXMLKf99W8M4PUwO6KB7fu', 'ADMIN'
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM "users"
-    WHERE id = '223e4567-e89b-12d3-a456-426614174006'
-       OR email = 'testuser@test.com'
-);
-
-
-
-```
-
-
-# Auth Service DB
-
-## Environment Variables
-
-```
-POSTGRES_DB=db;POSTGRES_PASSWORD=password;POSTGRES_USER=admin_user
-```
+Use and cite according to your institution’s policies; do not commit secrets or production patient data.

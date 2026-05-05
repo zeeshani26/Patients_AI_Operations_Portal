@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#990000">
+  <title>Patient AI Operations Portal</title>
+  <link rel="stylesheet" href="/styles.css?v=20260504g">
+</head>
+<body class="portal-root">
+  <header class="app-header">
+    <div>
+      <div class="brand-row">
+        <h1>Patient AI Operations Portal</h1>
+        <span class="brand-pill">Clinical AI · Resilience Lab</span>
+      </div>
+      <p>Clinical Intelligence and Resilience Console</p>
+    </div>
+    <div class="session-info">
+      <span id="sessionUser" class="hint" hidden></span>
+      <button id="logoutBtn" class="secondary" hidden>Logout</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section id="authShell" class="auth-shell">
+      <div class="auth-nav-wrap">
+        <button id="showLoginBtn" class="auth-tab active" type="button">Sign In</button>
+        <button id="showRegisterBtn" class="auth-tab" type="button">Create Account</button>
+      </div>
+
+      <article id="loginCard" class="panel auth-card auth-pane active">
+        <h2>Sign In</h2>
+        <div class="grid">
+          <label>Email <input id="loginEmail" type="email" value="testuser@test.com"></label>
+          <label>Password <input id="loginPassword" type="password" placeholder="Enter password"></label>
+        </div>
+        <p id="authFeedback" class="auth-feedback" hidden></p>
+        <div class="actions">
+          <button id="loginBtn">Sign In</button>
+        </div>
+      </article>
+
+      <article id="registerCard" class="panel auth-card auth-pane" hidden>
+        <h2>Create Account</h2>
+        <div class="grid">
+          <label>Email <input id="registerEmail" type="email" placeholder="newuser@example.com"></label>
+          <label>Password <input id="registerPassword" type="password" placeholder="Minimum 8 characters"></label>
+        </div>
+        <p id="registerFeedback" class="auth-feedback" hidden></p>
+        <div class="actions">
+          <button id="registerBtn">Create User</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="appContent" hidden>
+      <nav class="top-nav">
+        <button class="nav-btn active" data-route="dashboard">Dashboard</button>
+        <button class="nav-btn" data-route="patients">Patient Records</button>
+        <button class="nav-btn" data-route="analytics">Analytics</button>
+        <button class="nav-btn" data-route="digitalTwin">Digital Twin</button>
+        <button class="nav-btn" data-route="predictions">Predictions</button>
+        <button class="nav-btn" data-route="chaos">Chaos Center</button>
+        <button class="nav-btn" data-route="experiments">Experiments</button>
+        <button class="nav-btn" data-route="findings">Findings Builder</button>
+        <button class="nav-btn" data-route="reports">Reports</button>
+        <button class="nav-btn" data-route="settings">Settings</button>
+        <div id="activePatientBadge" class="active-patient-badge">Active patient: not selected</div>
+      </nav>
+
+      <div class="content-layout">
+        <section class="route-area">
+          <article class="panel route active" data-route="dashboard">
+            <h2>Dashboard</h2>
+            <p>Use this as a realistic workflow:</p>
+            <ol>
+              <li>Register/login and save gateway settings.</li>
+              <li>Create patient records and sync a patient context.</li>
+              <li>Use AI Assistant and Digital Twin to assess risk and interventions.</li>
+              <li>Run Chaos Center and Experiments for reliability evidence.</li>
+              <li>Review structured summaries in Reports.</li>
+            </ol>
+            <div id="kpiCards" class="kpi-grid"></div>
+            <div id="featureGuide" class="chart-panel"></div>
+          </article>
+
+          <article class="panel route" data-route="patients" hidden>
+            <h2>Patient Records</h2>
+            <p class="hint">Clinical registry operations for create, review, update, and delete.</p>
+            <div class="grid two">
+              <label>Name <input id="patientName" type="text" value="Alice Johnson"></label>
+              <label>Email <input id="patientEmail" type="email" value="alice@example.com"></label>
+              <label>Address <input id="patientAddress" type="text" value="Indianapolis, IN"></label>
+              <label>Date of Birth <input id="patientDob" type="date" value="1988-06-15"></label>
+              <label>Registered Date <input id="patientRegisteredDate" type="date"></label>
+              <label>Patient ID (update/delete) <input id="patientIdTarget" type="text" placeholder="UUID from create/list"></label>
+            </div>
+            <div class="actions">
+              <button id="createPatientBtn">Create</button>
+              <button id="listPatientsBtn" class="secondary">List</button>
+              <button id="updatePatientBtn" class="secondary">Update</button>
+              <button id="deletePatientBtn" class="danger">Delete</button>
+              <button id="deleteSelectedPatientsBtn" class="danger">Delete Selected</button>
+            </div>
+            <div class="actions">
+              <label>Import Count
+                <input id="importPatientCount" type="number" min="1" max="500" value="10">
+              </label>
+              <button id="importDatasetPatientsBtn" class="secondary">Import from Healthcare Dataset</button>
+            </div>
+            <div id="patientsTable"></div>
+          </article>
+
+          <article class="panel route" data-route="analytics" hidden>
+            <h2>Analytics</h2>
+            <p class="hint">Operational and event statistics from the analytics service.</p>
+            <div class="actions">
+              <button id="analyticsBtn">Load Statistics</button>
+            </div>
+            <div id="analyticsCards" class="kpi-grid"></div>
+            <div id="analyticsChart" class="chart-panel"></div>
+          </article>
+
+          <article class="panel route" data-route="digitalTwin" hidden>
+            <h2>Digital Twin</h2>
+            <p class="hint">What-if intervention simulation with patient context.</p>
+            <div class="grid two">
+              <label>Patient ID <input id="aiPatientId" type="text" value="123e4567-e89b-12d3-a456-426614174001"></label>
+              <label>Name <input id="aiName" type="text" value="Alice Johnson"></label>
+              <label>Email <input id="aiEmail" type="email" value="alice@example.com"></label>
+              <label>Date of Birth <input id="aiDob" type="date" value="1988-06-15"></label>
+              <label>Age (optional) <input id="aiAge" type="number" min="0" max="120" placeholder="Optional"></label>
+              <label>Address <input id="aiAddress" type="text" value="Indianapolis, IN"></label>
+              <label class="full">Medical History <textarea id="aiMedicalHistory">hypertension</textarea></label>
+              <label class="full">Current Medications <textarea id="aiCurrentMedications">lisinopril</textarea></label>
+              <label class="full">Allergies <textarea id="aiAllergies">penicillin</textarea></label>
+              <label>Intervention Type
+                <select id="interventionType">
+                  <option value="INCREASE_EXERCISE">Increase Exercise</option>
+                  <option value="OPTIMIZE_MEDICATION">Optimize Medication</option>
+                  <option value="SMOKING_CESSATION">Smoking Cessation</option>
+                  <option value="DELAY_TREATMENT">Delay Treatment (stress test)</option>
+                </select>
+              </label>
+              <label>Intervention Value <input id="interventionValue" type="text" placeholder="e.g., 180 min/week"></label>
+            </div>
+            <div class="actions">
+              <button id="assessRiskBtn">Assess Risk</button>
+              <button id="detectAnomaliesBtn" class="secondary">Detect Anomalies</button>
+              <button id="analyzeInterventionBtn">Analyze Intervention</button>
+            </div>
+            <div id="clinicalInsights"></div>
+            <div id="riskFactorsChart" class="chart-panel"></div>
+            <div id="riskContributionTable" class="chart-panel"></div>
+          </article>
+
+          <article class="panel route" data-route="predictions" hidden>
+            <h2>Predictions</h2>
+            <p class="hint">Track historical model outputs for a patient.</p>
+            <div class="grid two">
+              <label>Patient ID <input id="predictionsPatientId" type="text" value="123e4567-e89b-12d3-a456-426614174001"></label>
+              <label>Prediction Type <input id="predictionType" type="text" placeholder="RISK_ASSESSMENT or ANOMALY_DETECTION"></label>
+            </div>
+            <div class="actions">
+              <button id="predictionsBtn">Load Prediction History</button>
+            </div>
+            <div id="predictionsTable"></div>
+          </article>
+
+          <article class="panel route" data-route="chaos" hidden>
+            <h2>Chaos Command Center</h2>
+            <p class="hint">Inject degradation signals and test causal guardrail strategy selection.</p>
+            <div class="grid two">
+              <label>AI Latency (ms) <input id="chaosAiLatency" type="number" min="0" value="320"></label>
+              <label>DB Latency (ms) <input id="chaosDbLatency" type="number" min="0" value="280"></label>
+              <label>Kafka Lag <input id="chaosKafkaLag" type="number" min="0" value="6000"></label>
+              <label>Error Rate (%) <input id="chaosErrorRate" type="number" min="0" step="0.1" value="4.5"></label>
+              <label>Traffic Load (%) <input id="chaosTrafficLoad" type="number" min="0" max="100" value="92"></label>
+            </div>
+            <div class="actions">
+              <button id="guardrailDecisionBtn">Evaluate Guardrail Decision</button>
+              <button id="presetNormalBtn" class="secondary">Preset: Normal</button>
+              <button id="presetModerateBtn" class="secondary">Preset: Moderate</button>
+              <button id="presetSevereBtn" class="secondary">Preset: Severe</button>
+              <button id="replayChaosBtn" class="secondary">Replay Last</button>
+            </div>
+            <div id="guardrailCards" class="kpi-grid"></div>
+          </article>
+
+          <article class="panel route" data-route="experiments" hidden>
+            <h2>Experiments</h2>
+            <p class="hint">Performance vs reliability evidence tracking for thesis submission.</p>
+            <div class="grid two">
+              <label>Protocol ID <input id="protocolId" type="text" placeholder="Auto-generated or custom"></label>
+              <label>Protocol Label <input id="protocolLabel" type="text" placeholder="e.g., Week1-Baseline"></label>
+            </div>
+            <div class="actions">
+              <button id="startProtocolBtn">Start Protocol</button>
+            </div>
+            <div class="actions">
+              <button id="modelComparisonBtn" class="secondary">Load Model Comparison</button>
+              <button id="experimentSummaryBtn" class="secondary">Load Experiment Summary</button>
+              <button id="runScenarioSuiteBtn">Run Scenario Suite</button>
+            </div>
+            <div id="comparisonChart" class="chart-panel"></div>
+            <hr>
+            <div class="grid two">
+              <label>Model Name
+                <select id="expModelName">
+                  <option value="Rule-Based">Rule-Based</option>
+                  <option value="LLM-Only">LLM-Only</option>
+                  <option value="Causal-Hybrid" selected>Causal-Hybrid</option>
+                </select>
+              </label>
+              <label>Scenario Name <input id="expScenarioName" type="text" value="DB latency spike"></label>
+              <label>Avg Latency (ms) <input id="expLatencyMs" type="number" min="0" value="132"></label>
+              <label>Availability (%) <input id="expAvailabilityPct" type="number" min="0" max="100" step="0.1" value="98.7"></label>
+              <label>Stability Under Fault (%) <input id="expStabilityPct" type="number" min="0" max="100" step="0.1" value="92.3"></label>
+              <label>Explainability Score (0-10) <input id="expExplainabilityScore" type="number" min="0" max="10" step="0.1" value="9.1"></label>
+              <label>Fallback Correctness (%) <input id="expFallbackCorrectnessPct" type="number" min="0" max="100" step="0.1" value="94.0"></label>
+              <label class="full">Notes <textarea id="expNotes">Guardrail switched to DB_DEGRADED_MODE and maintained high availability.</textarea></label>
+            </div>
+            <div class="actions">
+              <button id="logExperimentBtn">Log Experiment Run</button>
+            </div>
+            <div id="experimentCards" class="kpi-grid"></div>
+            <div id="experimentTrendChart" class="chart-panel"></div>
+          </article>
+
+          <article class="panel route" data-route="findings" hidden>
+            <h2>Findings Builder</h2>
+            <p class="hint">Auto-compile F1-F5 evidence from your latest runs, then export for report appendices.</p>
+            <div class="actions">
+              <button id="refreshFindingsBtn">Refresh Findings</button>
+              <button id="exportFindingsMdBtn" class="secondary">Export Markdown</button>
+              <button id="exportFindingsCsvBtn" class="secondary">Export CSV</button>
+              <button id="exportProtocolReportBtn">Export Protocol Report</button>
+            </div>
+            <div id="findingsSummary" class="meaning-panel">Run Digital Twin, Chaos, Experiments, and Chat actions to populate findings.</div>
+            <div id="findingsTable"></div>
+          </article>
+
+          <article class="panel route" data-route="reports" hidden>
+            <h2>Reports</h2>
+            <p class="hint">Human-readable interpretation of latest results.</p>
+            <div id="meaningPanel" class="meaning-panel">Run an action in any page to view interpreted report output.</div>
+            <hr>
+            <h3>Proposal Alignment Checklist</h3>
+            <div id="proposalChecklist" class="meaning-panel"></div>
+          </article>
+
+          <article class="panel route" data-route="settings" hidden>
+            <h2>Settings</h2>
+            <div class="grid two">
+              <label>Gateway Base URL <input id="baseUrl" type="text" value="http://localhost:4004"></label>
+              <label>JWT Token <input id="jwtToken" type="text" placeholder="Auto-filled after login"></label>
+            </div>
+            <div class="actions">
+              <button id="saveConfigBtn">Save Settings</button>
+              <button id="clearTokenBtn" class="secondary">Clear Token</button>
+            </div>
+          </article>
+        </section>
+
+        <aside class="panel side-panel">
+          <h2>Result Summary</h2>
+          <div id="statusBadge" class="status neutral">Idle</div>
+          <div id="resultSummary" class="meaning-panel">No action run yet.</div>
+          <h2>Raw API Response</h2>
+          <pre id="responseOutput">{ "message": "Responses will appear here." }</pre>
+          <h2>Activity Log</h2>
+          <ul id="activityLog"></ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <section id="chatbotWidget" class="chatbot-widget" hidden>
+    <div id="chatPanel" class="chatbot-panel" hidden>
+      <div class="chatbot-header">
+        <h3>AI Copilot</h3>
+        <div class="chatbot-header-actions">
+          <button id="chatExpandBtn" class="icon-btn" type="button" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
+          <button id="chatCloseBtn" class="icon-btn" type="button" title="Minimize chatbot" aria-label="Minimize chatbot">×</button>
+        </div>
+      </div>
+      <div class="chat-help">
+        <p><strong>Ask naturally:</strong> patient details, risk reasoning, anomaly causes, intervention what-if, guardrail interpretation.</p>
+        <p id="chatContext">Working patient: not set</p>
+      </div>
+      <div id="chatThread" class="chat-thread"></div>
+      <div id="chatThinkingBar" class="chat-thinking-bar" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="Ask anything about risk, interventions, or resilience...">
+        <button id="chatSendBtn">Send</button>
+      </div>
+    </div>
+    <button id="chatToggleBtn" class="chatbot-toggle" type="button" title="Open AI assistant">AI</button>
+  </section>
+
+  <script src="/app.js?v=20260504g"></script>
+</body>
+</html>

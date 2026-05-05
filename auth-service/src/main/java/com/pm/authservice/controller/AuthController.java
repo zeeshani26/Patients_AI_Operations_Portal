@@ -2,6 +2,7 @@ package com.pm.authservice.controller;
 
 import com.pm.authservice.dto.LoginRequestDTO;
 import com.pm.authservice.dto.LoginResponseDTO;
+import com.pm.authservice.dto.RegisterRequestDTO;
 import com.pm.authservice.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import java.util.Optional;
@@ -35,6 +36,16 @@ public class AuthController {
 
     String token = tokenOptional.get();
     return ResponseEntity.ok(new LoginResponseDTO(token));
+  }
+
+  @Operation(summary = "Register a new user")
+  @PostMapping("/register")
+  public ResponseEntity<Void> register(@RequestBody RegisterRequestDTO request) {
+    boolean created = authService.register(request);
+    if (!created) {
+      return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
+    return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
   @Operation(summary = "Validate Token")

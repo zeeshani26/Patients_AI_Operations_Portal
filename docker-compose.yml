@@ -1,0 +1,175 @@
+# Local full stack: PostgreSQL, Zookeeper, Kafka, Zipkin, and all Spring Boot services.
+# From repo root: docker compose up --build
+#
+# Entry point: API Gateway http://localhost:4004
+# Login: POST http://localhost:4004/auth/login  (body: {"email":"testuser@test.com","password":"password"})
+# Zipkin UI: http://localhost:9411
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: admin_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  zipkin:
+    image: openzipkin/zipkin:2.27
+    ports:
+      - "9411:9411"
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: admin_user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_SQL_INIT_MODE: always
+      JWT_SECRET: Y2hhVEc3aHJnb0hYTzMyZ2ZqVkpiZ1RkZG93YWxrUkM=
+      SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+    ports:
+      - "4005:4005"
+
+  billing-service:
+    build: ./billing-service
+    container_name: billing-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/billing_db
+      SPRING_DATASOURCE_USERNAME: admin_user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+    ports:
+      - "4001:4001"
+      - "9001:9001"
+
+  ai-service:
+    build: ./ai-service
+    container_name: ai-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ai_db
+      SPRING_DATASOURCE_USERNAME: admin_user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+      USE_OPENAI: "false"
+      # Optional LLM — also loaded via env_file; explicit lines override / default when .env missing
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      USE_GEMINI: ${USE_GEMINI:-true}
+      USE_GEMINI_AUGMENT: ${USE_GEMINI_AUGMENT:-true}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-gemini-2.0-flash,gemini-1.5-flash,gemini-1.5-pro}
+      GEMINI_MAX_WORDS: ${GEMINI_MAX_WORDS:-140}
+      AI_ML_METRICS_PATH: ${AI_ML_METRICS_PATH:-../model-comparison-evidence/ml_model_metrics.json}
+    ports:
+      - "4003:4003"
+
+  patient-service:
+    build: ./patient-service
+    container_name: patient-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      billing-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/patient_db
+      SPRING_DATASOURCE_USERNAME: admin_user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_SQL_INIT_MODE: always
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      BILLING_SERVICE_ADDRESS: billing-service
+      BILLING_SERVICE_GRPC_PORT: "9001"
+      SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+    ports:
+      - "4000:4000"
+
+  analytics-service:
+    build: ./analytics-service
+    container_name: analytics-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/analytics_db
+      SPRING_DATASOURCE_USERNAME: admin_user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+    ports:
+      - "4002:4002"
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    depends_on:
+      - auth-service
+      - patient-service
+      - billing-service
+      - analytics-service
+      - ai-service
+    environment:
+      SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+    ports:
+      - "4004:4004"
+
+volumes:
+  postgres_data:
