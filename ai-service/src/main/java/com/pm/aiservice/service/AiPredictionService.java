@@ -1220,37 +1220,14 @@ public class AiPredictionService {
   /**
    * Optionally appends a Gemini rewrite of the verified local answer (same facts, friendlier prose).
    */
+  @SuppressWarnings("unused")
   private ChatMessageResponseDTO finishChatResponse(
       ChatMessageResponseDTO response,
       String userMessage,
       PatientRiskAssessmentRequest patient,
       boolean allowGeminiAugment) {
-    if (!allowGeminiAugment || !geminiChatService.isAugmentEnabled()) {
-      return response;
-    }
-    String augmentSystem =
-        "You are a clinical-operations copilot for an IU Indianapolis research demo. "
-            + "The user message includes a VERIFIED backend summary from rule-based or causal logic. "
-            + "Write 2-4 short paragraphs in plain English that elaborate and clarify. "
-            + "Do NOT contradict, remove, or change any numbers, names, or factual claims from the summary. "
-            + "Do not diagnose or prescribe. Do not invent patient data beyond what appears in the summary. "
-            + "Do not use em dashes. Do not output meta bullets labeled Context, Goal, or Constraints.";
-    String augmentUser =
-        "User question:\n"
-            + userMessage
-            + "\n\nVerified backend summary (preserve all facts in meaning):\n"
-            + response.getAnswer()
-            + "\n\nSuggested follow-up:\n"
-            + (response.getActionHint() == null ? "" : response.getActionHint())
-            + "\n\nPatient context for tone only (do not contradict if absent from summary):\n"
-            + patientContextSummary(patient);
-    geminiChatService
-        .generateAugmentation(augmentSystem, augmentUser)
-        .ifPresent(
-            g -> {
-              response.setAnswer(response.getAnswer() + "\n\n(Copilot note)\n" + g);
-              response.setConfidence("HIGH");
-            });
+    // Augmentation previously appended a Gemini layer labeled "(Copilot note)", which read as
+    // internal reasoning to end users. Keep answers to the verified backend text only.
     return response;
   }
 

@@ -2,6 +2,7 @@ package com.pm.patientservice.service;
 
 import com.pm.patientservice.dto.PatientRequestDTO;
 import com.pm.patientservice.dto.PatientResponseDTO;
+import com.pm.patientservice.exception.DuplicatePatientProfileException;
 import com.pm.patientservice.exception.EmailAlreadyExistsException;
 import com.pm.patientservice.exception.PatientNotFoundException;
 import com.pm.patientservice.grpc.BillingServiceGrpcClient;
@@ -46,6 +47,11 @@ public class PatientService {
       throw new EmailAlreadyExistsException(
           "A patient with this email " + "already exists"
               + patientRequestDTO.getEmail());
+    }
+    if (patientRepository.existsByNameIgnoreCaseAndAddressIgnoreCase(
+        patientRequestDTO.getName(), patientRequestDTO.getAddress())) {
+      throw new DuplicatePatientProfileException(
+          "A patient with this name and address already exists.");
     }
 
     Patient newPatient = patientRepository.save(
@@ -96,6 +102,11 @@ public class PatientService {
       throw new EmailAlreadyExistsException(
           "A patient with this email " + "already exists"
               + patientRequestDTO.getEmail());
+    }
+    if (patientRepository.existsByNameIgnoreCaseAndAddressIgnoreCaseAndIdNot(
+        patientRequestDTO.getName(), patientRequestDTO.getAddress(), id)) {
+      throw new DuplicatePatientProfileException(
+          "Another patient already uses this name and address.");
     }
 
     patient.setName(patientRequestDTO.getName());

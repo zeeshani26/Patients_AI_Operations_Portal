@@ -2,6 +2,7 @@ package com.pm.patientservice.service;
 
 import com.pm.patientservice.dto.PatientRequestDTO;
 import com.pm.patientservice.dto.PatientResponseDTO;
+import com.pm.patientservice.exception.DuplicatePatientProfileException;
 import com.pm.patientservice.exception.EmailAlreadyExistsException;
 import com.pm.patientservice.exception.PatientNotFoundException;
 import com.pm.patientservice.grpc.BillingServiceGrpcClient;
@@ -84,6 +85,9 @@ class PatientServiceTest {
   void createPatient_ShouldCreatePatientSuccessfully() {
     // Given
     when(patientRepository.existsByEmail(testPatientRequestDTO.getEmail())).thenReturn(false);
+    when(patientRepository.existsByNameIgnoreCaseAndAddressIgnoreCase(
+            testPatientRequestDTO.getName(), testPatientRequestDTO.getAddress()))
+        .thenReturn(false);
     when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
     when(billingServiceGrpcClient.createBillingAccount(anyString(), anyString(), anyString()))
         .thenReturn(BillingResponse.newBuilder()
@@ -114,11 +118,27 @@ class PatientServiceTest {
   }
 
   @Test
+  void createPatient_ShouldThrowWhenNameAndAddressExist() {
+    when(patientRepository.existsByEmail(testPatientRequestDTO.getEmail())).thenReturn(false);
+    when(patientRepository.existsByNameIgnoreCaseAndAddressIgnoreCase(
+            testPatientRequestDTO.getName(), testPatientRequestDTO.getAddress()))
+        .thenReturn(true);
+
+    assertThrows(
+        DuplicatePatientProfileException.class,
+        () -> patientService.createPatient(testPatientRequestDTO));
+    verify(patientRepository, never()).save(any(Patient.class));
+  }
+
+  @Test
   void updatePatient_ShouldUpdatePatientSuccessfully() {
     // Given
     UUID patientId = testPatient.getId();
     when(patientRepository.findById(patientId)).thenReturn(Optional.of(testPatient));
     when(patientRepository.existsByEmailAndIdNot(testPatientRequestDTO.getEmail(), patientId))
+        .thenReturn(false);
+    when(patientRepository.existsByNameIgnoreCaseAndAddressIgnoreCaseAndIdNot(
+            testPatientRequestDTO.getName(), testPatientRequestDTO.getAddress(), patientId))
         .thenReturn(false);
     when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
 
@@ -159,6 +179,9 @@ class PatientServiceTest {
   void createPatient_ShouldHandleBillingServiceFailureGracefully() {
     // Given
     when(patientRepository.existsByEmail(testPatientRequestDTO.getEmail())).thenReturn(false);
+    when(patientRepository.existsByNameIgnoreCaseAndAddressIgnoreCase(
+            testPatientRequestDTO.getName(), testPatientRequestDTO.getAddress()))
+        .thenReturn(false);
     when(patientRepository.save(any(Patient.class))).thenReturn(testPatient);
     when(billingServiceGrpcClient.createBillingAccount(anyString(), anyString(), anyString()))
         .thenThrow(new RuntimeException("Billing service unavailable"));

@@ -786,7 +786,13 @@
     const contentType = response.headers.get("content-type") || "";
     const body = contentType.includes("application/json") ? await response.json() : await response.text();
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} ${response.statusText}: ${typeof body === "string" ? body : JSON.stringify(body)}`);
+      const detail =
+        typeof body === "string"
+          ? body
+          : body && typeof body === "object" && typeof body.message === "string"
+            ? body.message
+            : JSON.stringify(body);
+      throw new Error(`HTTP ${response.status}: ${detail}`);
     }
     return body;
   }
@@ -978,6 +984,10 @@
     return (value || "").toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "");
   }
 
+  function patientNameAddressKey(name, address) {
+    return `${(name || "").trim().toLowerCase()}|${(address || "").trim().toLowerCase()}`;
+  }
+
   function profileKey(patient) {
     return String(patient?.id || "").trim();
   }
@@ -1082,6 +1092,9 @@
       const dataset = await fetch("/data/healthcare_patients_seed.json").then((res) => res.json());
       const existing = await request("/api/patients", { method: "GET" }, true);
       const existingEmails = new Set((existing || []).map((p) => (p.email || "").toLowerCase()));
+      const existingNameAddress = new Set(
+        (existing || []).map((p) => patientNameAddressKey(p.name, p.address))
+      );
       const selected = [];
       for (let i = 0; i < count; i++) {
         selected.push(dataset[i % dataset.length]);
@@ -1099,16 +1112,23 @@
           seq += 1;
           email = `${base}.${seq}@seed.local`;
         }
+        const rowAddress = `${row.hospital}, Indianapolis, IN`;
+        const identityKey = patientNameAddressKey(row.name, rowAddress);
+        if (existingNameAddress.has(identityKey)) {
+          skipped += 1;
+          continue;
+        }
         const payload = {
           name: row.name,
           email,
-          address: `${row.hospital}, Indianapolis, IN`,
+          address: rowAddress,
           dateOfBirth: dobFromAge(row.age),
           registeredDate: new Date().toISOString().slice(0, 10),
         };
         try {
           const result = await request("/api/patients", { method: "POST", body: JSON.stringify(payload) }, true);
           created.push(result);
+          existingNameAddress.add(patientNameAddressKey(result.name, result.address));
           const key = profileKey(result);
           if (key) {
             state.patientProfiles[key] = buildClinicalProfile(
@@ -1120,7 +1140,8 @@
           }
           existingEmails.add(email.toLowerCase());
         } catch (error) {
-          if ((error.message || "").includes("already exists")) {
+          const em = error.message || "";
+          if (em.includes("already exists") || em.includes("name and address")) {
             skipped += 1;
             continue;
           }
@@ -1417,6 +1438,10 @@
     let s = String(text || "")
       .replace(/\u2014/g, "-")
       .replace(/\u2013/g, "-");
+    const copilotIdx = s.toLowerCase().indexOf("(copilot note)");
+    if (copilotIdx >= 0) {
+      s = s.slice(0, copilotIdx).trim();
+    }
     s = stripLeadingStarQuotes(s);
     s = s.replace(/\n\nNext:\s*[^\n]+/g, "");
     if (/["\u201d]\s*$/.test(s) && !s.includes("\n")) {

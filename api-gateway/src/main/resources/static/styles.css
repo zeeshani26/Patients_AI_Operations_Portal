@@ -24,11 +24,12 @@ body.portal-root {
   min-height: 100vh;
   font-family: var(--font-body);
   color: var(--iu-text);
-  background: #0e0f12;
+  background: #0a0b10;
   background-image:
-    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(153, 0, 0, 0.22), transparent 55%),
-    radial-gradient(ellipse 90% 60% at 0% 100%, rgba(196, 30, 58, 0.12), transparent 50%),
-    linear-gradient(180deg, #12131a 0%, #1a1b24 40%, #0e0f12 100%);
+    radial-gradient(ellipse 100% 70% at 85% 8%, rgba(196, 30, 58, 0.28), transparent 52%),
+    radial-gradient(ellipse 85% 55% at 12% 92%, rgba(120, 0, 0, 0.18), transparent 48%),
+    linear-gradient(135deg, #0f1018 0%, #181222 35%, #12131c 55%, #0b0c12 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
   background-attachment: fixed;
 }
 
@@ -251,6 +252,15 @@ body.portal-root::before {
     0 24px 56px rgba(0, 0, 0, 0.34);
 }
 
+.panel.route {
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(255, 242, 245, 0.88) 38%,
+    rgba(248, 249, 255, 0.92) 100%
+  );
+}
+
 .panel h2 {
   margin-top: 0;
   font-family: var(--font-heading);
@@ -366,6 +376,34 @@ textarea {
   gap: 0.55rem;
 }
 
+.actions-patient-toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.actions-patient-toolbar button {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(153, 0, 0, 0.12);
+}
+
+.actions-patient-toolbar button:hover {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+.actions-import-row {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.actions-import-row label {
+  flex: 1 1 180px;
+}
+
 button {
   appearance: none;
   text-decoration: none;
@@ -423,8 +461,13 @@ button.secondary:hover {
 }
 
 button.danger {
-  background: #5a0000;
-  border-color: #5a0000;
+  background: linear-gradient(145deg, #5a0000, #7a0a12);
+  border-color: #4a0000;
+}
+
+button.danger:hover {
+  background: linear-gradient(145deg, #6e0000, #921018);
+  box-shadow: 0 10px 24px rgba(90, 0, 0, 0.35);
 }
 
 .status {
@@ -849,8 +892,8 @@ button.danger {
 
 .chatbot-toggle {
   position: fixed;
-  left: 20px;
-  right: auto;
+  right: 20px;
+  left: auto;
   bottom: 20px;
   z-index: 5002;
   width: 58px;
@@ -889,8 +932,8 @@ button.danger {
 
 .chatbot-panel {
   position: fixed;
-  left: 20px;
-  right: auto;
+  right: 20px;
+  left: auto;
   bottom: calc(20px + 58px + 10px);
   z-index: 5001;
   width: min(400px, calc(100vw - 24px));
@@ -909,7 +952,7 @@ button.danger {
   grid-template-rows: auto auto 1fr auto auto;
   opacity: 0;
   transform: translateY(16px) scale(0.98);
-  transform-origin: bottom left;
+  transform-origin: bottom right;
   pointer-events: none;
   transition: opacity 220ms ease, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1073,12 +1116,14 @@ ol, ul {
   }
 
   .chatbot-toggle {
-    left: 12px;
+    right: 12px;
+    left: auto;
     bottom: 12px;
   }
 
   .chatbot-panel:not(.fullscreen) {
-    left: 12px;
+    right: 12px;
+    left: auto;
     bottom: calc(12px + 58px + 10px);
   }
 }

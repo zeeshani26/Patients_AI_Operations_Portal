@@ -293,12 +293,68 @@ public class GeminiChatService {
     }
   }
 
+  private String stripCopilotNoteSuffix(String text) {
+    if (text == null || text.isBlank()) {
+      return "";
+    }
+    String lower = text.toLowerCase();
+    int idx = lower.indexOf("(copilot note)");
+    if (idx < 0) {
+      idx = lower.indexOf("copilot note:");
+    }
+    if (idx < 0) {
+      idx = lower.indexOf("**copilot note**");
+    }
+    if (idx >= 0) {
+      return text.substring(0, idx).trim();
+    }
+    return text.trim();
+  }
+
+  /** Drops short paragraphs that echo system instructions instead of answering the user. */
+  private String dropEchoConstraintParagraphs(String cleaned) {
+    if (cleaned == null || cleaned.isBlank()) {
+      return "";
+    }
+    String[] paras = cleaned.split("\n\n+");
+    StringBuilder out = new StringBuilder();
+    for (String p : paras) {
+      String pt = p.trim();
+      if (pt.isEmpty()) {
+        continue;
+      }
+      String pl = pt.toLowerCase();
+      if (pl.startsWith("strict output")
+          || pl.startsWith("app details")
+          || pl.startsWith("system constraints")
+          || pl.startsWith("constraints for this reply")) {
+        continue;
+      }
+      if ((pl.startsWith("no diagnosis") || pl.contains("no diagnosis/prescription"))
+          && pt.length() < 280) {
+        continue;
+      }
+      if (pl.contains("concise (under") && pl.contains("words") && pt.length() < 320) {
+        continue;
+      }
+      if (pl.startsWith("* ") && pl.contains("no planning steps") && pt.length() < 400) {
+        continue;
+      }
+      if (out.length() > 0) {
+        out.append("\n\n");
+      }
+      out.append(pt);
+    }
+    return out.toString().trim();
+  }
+
   private String sanitizeModelText(String raw) {
     if (raw == null) {
       return "";
     }
     String normalized = raw.replace("\r\n", "\n").trim();
     normalized = normalized.replace('\u2014', '-').replace('\u2013', '-');
+    normalized = stripCopilotNoteSuffix(normalized);
 
     String[] lines = normalized.split("\n");
     List<String> kept = new ArrayList<>();
@@ -310,6 +366,11 @@ public class GeminiChatService {
       }
       String lower = t.toLowerCase();
       if (META_SCAFFOLD_LINE.matcher(t).find()) {
+        continue;
+      }
+      if (lower.startsWith("final check")
+          || lower.startsWith("(final check")
+          || lower.contains("final check on")) {
         continue;
       }
       if (lower.startsWith("* user asks")
@@ -349,6 +410,7 @@ public class GeminiChatService {
       kept.add(line);
     }
     String cleaned = String.join("\n", kept).trim().replaceAll("\n{3,}", "\n\n");
+    cleaned = dropEchoConstraintParagraphs(cleaned);
 
     String lowerClean = cleaned.toLowerCase();
     long starLines = cleaned.lines().filter(l -> l.trim().startsWith("*")).count();

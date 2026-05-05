@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#990000">
   <title>Patient AI Operations Portal</title>
-  <link rel="stylesheet" href="/styles.css?v=20260505a">
+  <link rel="stylesheet" href="/styles.css?v=20260505b">
 </head>
 <body class="portal-root">
   <header class="app-header">
@@ -96,14 +96,14 @@
               <label>Registered Date <input id="patientRegisteredDate" type="date"></label>
               <label>Patient ID (update/delete) <input id="patientIdTarget" type="text" placeholder="UUID from create/list"></label>
             </div>
-            <div class="actions">
+            <div class="actions actions-patient-toolbar">
               <button id="createPatientBtn">Create</button>
               <button id="listPatientsBtn" class="secondary">List</button>
               <button id="updatePatientBtn" class="secondary">Update</button>
               <button id="deletePatientBtn" class="danger">Delete</button>
               <button id="deleteSelectedPatientsBtn" class="danger">Delete Selected</button>
             </div>
-            <div class="actions">
+            <div class="actions actions-import-row">
               <label>Import Count
                 <input id="importPatientCount" type="number" min="1" max="500" value="10">
               </label>
@@ -299,6 +299,6 @@
     <button id="chatToggleBtn" class="chatbot-toggle" type="button" title="Open AI assistant">AI</button>
   </section>
 
-  <script src="/app.js?v=20260505a"></script>
+  <script src="/app.js?v=20260505b"></script>
 </body>
 </html>
