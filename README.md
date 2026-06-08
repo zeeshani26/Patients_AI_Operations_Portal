@@ -125,8 +125,3 @@ docker compose up -d --build
 | Chat always fallback / errors | Set **`GEMINI_API_KEY`** in `.env`; restart **ai-service**: `docker compose up -d ai-service`. |
 | Port already in use | Stop other apps using **4004**, **5432**, **9092**, etc., or change ports in `docker-compose.yml`. |
 
----
-
-## License / academic use
-
-Use and cite according to your institution’s policies; do not commit secrets or production patient data.
