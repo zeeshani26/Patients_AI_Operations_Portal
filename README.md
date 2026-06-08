@@ -6,6 +6,14 @@ Microservices platform for explainable patient risk, intervention what-if, causa
 
 ---
 
+## Demo Login and Password
+
+I have hosted a version of this on DigitalOcean for demonstration. The link is http://159.65.104.236:4004.
+
+Use the following credentials to access it:
+Email : testuser@testin.com 
+Password : 12345678
+
 ## Prerequisites
 
 - **Docker Desktop** (Windows/macOS) or **Docker Engine + Compose** (Linux). Daemon must be running.
